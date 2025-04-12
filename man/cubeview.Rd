@@ -10,14 +10,38 @@
 \usage{
 cubeview(x, ...)
 
-\method{cubeview}{character}(x, at, col.regions = viridisLite::inferno,
-  na.color = "#BEBEBE", legend = TRUE, ...)
+\method{cubeview}{character}(
+  x,
+  at,
+  col.regions = viridisLite::inferno,
+  na.color = "#BEBEBE",
+  legend = TRUE,
+  options = cubeOptions(),
+  legend.options = legendOptions(),
+  ...
+)
 
-\method{cubeview}{stars}(x, at, col.regions = viridisLite::inferno,
-  na.color = "#BEBEBE", legend = TRUE, ...)
+\method{cubeview}{stars}(
+  x,
+  at,
+  col.regions = viridisLite::inferno,
+  na.color = "#BEBEBE",
+  legend = TRUE,
+  options = cubeOptions(),
+  legend.options = legendOptions(),
+  ...
+)
 
-\method{cubeview}{Raster}(x, at, col.regions = viridisLite::inferno,
-  na.color = "#BEBEBE", legend = TRUE, ...)
+\method{cubeview}{Raster}(
+  x,
+  at,
+  col.regions = viridisLite::inferno,
+  na.color = "#BEBEBE",
+  legend = TRUE,
+  options = cubeOptions(),
+  legend.options = legendOptions(),
+  ...
+)
 
 cubeView(x, ...)
 }
@@ -27,7 +51,7 @@ cubeView(x, ...)
 \item{...}{additional arguments passed on to \link[stars]{read_stars}.}
 
 \item{at}{the breakpoints used for the visualisation. See
-\code{\link{levelplot}} for details.}
+\code{\link[lattice]{levelplot}} for details.}
 
 \item{col.regions}{either a palette function or a vector of colors to be
 used for palette generation.}
@@ -35,6 +59,12 @@ used for palette generation.}
 \item{na.color}{color for missing values.}
 
 \item{legend}{logical. Whether to plot a legend.}
+
+\item{options}{list of options (x_pos, y_pos, z_pos) for the cube.
+See \link{cubeOptions} for details.}
+
+\item{legend.options}{list of options (width & height in pixels) for the legend.
+See \link{legendOptions} for details.}
 }
 \description{
 Creates a 3D data cube view of a RasterStack/Brick.
@@ -87,6 +117,9 @@ if (interactive()) {
   ## use different color palette and set breaks
   clr <- viridisLite::viridis
   cubeview(kili_data, at = seq(-0.15, 0.95, 0.1), col.regions = clr)
+
+  ## specify initial location of slices
+  cubeview(kili_data, options = cubeOptions(x_pos = 21, y_pos = 45, z_pos = 22))
 }
 
 }

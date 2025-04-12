@@ -11,11 +11,15 @@
 #'
 #' @param x a file name, stars object, RasterStack or RasterBrick
 #' @param at the breakpoints used for the visualisation. See
-#' \code{\link{levelplot}} for details.
+#' \code{\link[lattice]{levelplot}} for details.
 #' @param col.regions either a palette function or a vector of colors to be
 #'   used for palette generation.
 #' @param na.color color for missing values.
 #' @param legend logical. Whether to plot a legend.
+#' @param options list of options (x_pos, y_pos, z_pos) for the cube.
+#'   See \link{cubeOptions} for details.
+#' @param legend.options list of options (width & height in pixels) for the legend.
+#'   See \link{legendOptions} for details.
 #' @param ... additional arguments passed on to \link[stars]{read_stars}.
 #'
 #' @details
@@ -63,6 +67,9 @@
 #'   ## use different color palette and set breaks
 #'   clr <- viridisLite::viridis
 #'   cubeview(kili_data, at = seq(-0.15, 0.95, 0.1), col.regions = clr)
+#'
+#'   ## specify initial location of slices
+#'   cubeview(kili_data, options = cubeOptions(x_pos = 21, y_pos = 45, z_pos = 22))
 #' }
 #'
 #' @importFrom raster as.matrix ncol nrow nlayers
@@ -84,6 +91,8 @@ cubeview.character = function(x,
                               col.regions = viridisLite::inferno,
                               na.color = "#BEBEBE",
                               legend = TRUE,
+                              options = cubeOptions(),
+                              legend.options = legendOptions(),
                               ...) {
 
   if (!file.exists(x[1])) stop(sprintf("cannot find file %s", x))
@@ -94,7 +103,9 @@ cubeview.character = function(x,
            at = at,
            col.regions = col.regions,
            na.color = na.color,
-           legend = legend)
+           legend = legend,
+           options = options,
+           legend.options = legend.options)
 }
 
 #' @name cubeview
@@ -104,6 +115,8 @@ cubeview.stars <- function(x,
                            col.regions = viridisLite::inferno,
                            na.color = "#BEBEBE",
                            legend = TRUE,
+                           options = cubeOptions(),
+                           legend.options = legendOptions(),
                            ...) {
 
   stopifnot(inherits(x, "stars"))
@@ -114,12 +127,22 @@ cubeview.stars <- function(x,
   # }
 
   ar = unclass(x[[1]]) # raw data matrix/array
-  dms = unname(dim(ar))
-  if (length(dms) == 2) {
-    v = ar[, rev(seq_len(dms[2]))]
+  # dms = unname(dim(ar))
+  dm_x = dim(x)["x"]
+  dm_y = dim(x)["y"]
+  dm_z = dim(x)["band"]
+  dms = c(dim(x)["x"], dim(x)["y"], dim(x)["band"])
+  # dms = unname(dms)
+  dms_na = which(is.na(dms))
+  dms[is.na(dms)] = 1
+
+  if (any(dms == 1)) {
+    dms_ex1 = dms[dms != 1]
+    # v = ar[rev(seq_len(dms_ex1["y"])), ]
+    v = t(ar)
   } else {
     v = do.call(rbind, lapply(rev(seq(dms[3])), function(i) {
-      ar[, rev(seq_len(dim(ar)[2])), i]
+      ar[, rev(seq_len(dms[2])), i]
     }))
   }
   rng = range(v, na.rm = TRUE)
@@ -144,6 +167,7 @@ cubeview.stars <- function(x,
   # cols = col2Hex(cols, alpha = TRUE)
   cols = grDevices::col2rgb(cols, alpha = TRUE)
 
+  dms = unname(dms)
   x_size <- dms[1]
   z_size <- dms[2]
   y_size <- ifelse(length(dms) == 2, 1, dms[3])
@@ -156,18 +180,61 @@ cubeview.stars <- function(x,
     dir.create(dir)
 
     # if (missing(at)) at <- lattice::do.breaks(rng, 256)
-    leg_fl <- paste0(dir, "/legend_", createId(), ".png")
-    grDevices::png(leg_fl, height = 200, width = 80, units = "px",
-        bg = "transparent", pointsize = 14, antialias = "none")
-    rasterLegend(
-      list(
-        col = col.regions,
-        at = at,
-        height = 0.9,
-        space = "right"
-      )
+    # leg_fl <- paste0(dir, "/legend_", createId(), ".png")
+    # grDevices::png(leg_fl, height = 200, width = 80, units = "px",
+    #     bg = "transparent", pointsize = 12, antialias = "none")
+
+    lg_wdth = ifelse(
+      !is.null(legend.options$width)
+      , legend.options$width
+      , 400
     )
-    grDevices::dev.off()
+
+    lg_hght = ifelse(
+      !is.null(legend.options$height)
+      , legend.options$height
+      , 400
+    )
+
+    # lg_wdth = legend.options$width
+    # lg_hght = legend.options$height
+
+    if (unname(capabilities('cairo'))) {
+      leg_fl <- paste0(dir, "/legend_", createId(), ".svg")
+      # grDevices::svg(leg_fl, height = 2, width = 0.8,
+      #                bg = "transparent", pointsize = 12, antialias = "none")
+      svglite::svglite(file = leg_fl, width = lg_wdth/72, height = lg_hght/72,
+                       bg = "transparent", pointsize = 20)
+      rasterLegend(
+        list(
+          col = col.regions
+          , at = at
+          , height = 0.9
+          , space = "left"
+          , raster = TRUE
+          , interpolate = FALSE
+          , axis.line = list(col = '#999999')
+          , axis.text = list(col = '#999999')
+        )
+      )
+      grDevices::dev.off()
+    } else {
+      leg_fl <- paste0(dir, "/legend_", createId(), ".png")
+      grDevices::png(leg_fl, height = lg_hght, width = lg_wdth, units = "px",
+          bg = "transparent", pointsize = 20, antialias = "none")
+      rasterLegend(
+        list(
+          col = col.regions
+          , at = at
+          , height = 0.9
+          , space = "left"
+          , raster = FALSE
+          , axis.line = list(col = '#999999')
+          , axis.text = list(col = '#999999')
+        )
+      )
+      grDevices::dev.off()
+    }
   }
 
 
@@ -177,7 +244,10 @@ cubeview.stars <- function(x,
               x_size = x_size,
               y_size = y_size,
               z_size = z_size,
-              leg_fl = leg_fl)
+              leg_fl = leg_fl,
+              options = options,
+              legend.options = legend.options,
+              ...)
 
 }
 
@@ -188,6 +258,8 @@ cubeview.Raster = function(x,
                            col.regions = viridisLite::inferno,
                            na.color = "#BEBEBE",
                            legend = TRUE,
+                           options = cubeOptions(),
+                           legend.options = legendOptions(),
                            ...) {
 
   if (!raster::inMemory(x)) {
@@ -210,7 +282,9 @@ cubeview.Raster = function(x,
              at = at,
              col.regions = col.regions,
              na.color = na.color,
-             legend = legend)
+             legend = legend,
+             options = options,
+             legend.options = legend.options)
   } else {
     x = stars::st_as_stars(x)
     cubeview(x,
@@ -218,7 +292,9 @@ cubeview.Raster = function(x,
              at = at,
              col.regions = col.regions,
              na.color = na.color,
-             legend = legend)
+             legend = legend,
+             options = options,
+             legend.options = legend.options)
   }
 }
 
@@ -292,7 +368,10 @@ cubeViewRaw <- function(grey = NULL,
                         z_size,
                         width = NULL,
                         height = NULL,
-                        leg_fl = NULL) {
+                        leg_fl = NULL,
+                        options = cubeOptions(),
+                        legend.options = legendOptions(),
+                        ...) {
 
   total_size <- x_size*y_size*z_size
 
@@ -300,6 +379,13 @@ cubeViewRaw <- function(grey = NULL,
                       y_size = y_size,
                       z_size = z_size,
                       legend = !is.null(leg_fl))
+
+  legend.options = utils::modifyList(legendOptions(), legend.options)
+  options = utils::modifyList(cubeOptions(), options)
+
+  object_list = utils::modifyList(object_list, list(...))
+  object_list = utils::modifyList(object_list, list(legendOptions = legend.options))
+  object_list = utils::modifyList(object_list, list(options = options))
 
   if(!is.null(grey)) {
     if(length(grey)!=total_size) {
@@ -329,13 +415,22 @@ cubeViewRaw <- function(grey = NULL,
     object_list <- c(object_list, list(blue=base64enc::base64encode(as.raw(as.integer(blue)))))
   }
 
+  dep_nm = paste('images', paste(sample(9, 3), collapse = ''), sep = '-')
+  object_list = utils::modifyList(object_list, list(dep_nm = dep_nm))
+
   deps <- list()
 
-  if(!is.null(leg_fl)) {
+  if (!is.null(leg_fl)) {
     images_dir <- dirname(leg_fl)
     legend_file <- basename(leg_fl)
     attachments <- list(legend=legend_file)
-    dep1 <- htmltools::htmlDependency(name = "images", version = "1", src = c(file = images_dir), attachment = attachments, all_files = FALSE)
+    dep1 <- htmltools::htmlDependency(
+      name = dep_nm
+      , version = '1'
+      , src = c(file = images_dir)
+      , attachment = attachments
+      , all_files = FALSE
+    )
     deps <- list(dep1)
   }
 
@@ -355,7 +450,7 @@ cubeViewRaw <- function(grey = NULL,
 #'
 #' @param outputId Output variable to read from
 #' @param width,height the width and height of the map
-#' (see \code{\link{shinyWidgetOutput}})
+#' (see \code{\link[htmlwidgets]{shinyWidgetOutput}})
 #'
 #' @examples
 #' if (interactive()) {

@@ -1,8 +1,6 @@
 Package: cubeview
-Type: Package
 Title: View 3D Raster Cubes Interactively
-Version: 0.2.0
-Date: 2019-09-23
+Version: 0.2.4
 Authors@R: 
     c(person(given = "Tim",
              family = "Appelhans",
@@ -26,14 +24,13 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 2.10)
 Imports: base64enc, htmltools, htmlwidgets, lattice, raster, stars,
-        viridisLite
+        svglite, viridisLite
 Suggests: methods, shiny
-LazyData: true
-RoxygenNote: 6.1.1
+RoxygenNote: 7.3.2
 NeedsCompilation: no
-Packaged: 2019-09-24 07:00:28 UTC; Tim
+Packaged: 2025-04-12 08:55:03 UTC; tim
 Author: Tim Appelhans [cre, aut],
   Stefan Woellauer [aut],
   three.js authors [ctb, cph] (three.js library)
 Repository: CRAN
-Date/Publication: 2019-09-24 07:20:02 UTC
+Date/Publication: 2025-04-12 09:20:02 UTC
